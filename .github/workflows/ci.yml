@@ -1,0 +1,46 @@
+name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  build:
+    name: Lean 4 Build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Install Lean 4 toolchain
+      uses: leanprover/lean-action@v1
+      with:
+        use-mathlib-cache: true
+    - name: Warm Mathlib olean cache
+      run: lake exe cache get || true
+    - name: Build sibling package
+      run: lake build
+    - name: Smoke test — verify exposed surface compiles
+      run: |
+        cat > /tmp/smoke.lean << 'INNER_EOF'
+        import CATEPTPluginAFPFramework.IntegrationBridge
+        open CATEPTPluginAFPFramework
+        -- Sanity: every public name resolves and has the expected arity.
+        example : Type := AFPObj
+        example : Type := AFPSet
+        example : Type := AFPMat
+        example : Type := AFPVec
+        example : AFPMat → ℕ := afpDimRow
+        example : AFPMat → ℕ := afpDimCol
+        example : AFPVec → ℕ := afpDimVec
+        example : AFPMat → AFPMat → AFPMat := afpMatMul
+        example : AFPMat → AFPMat → AFPMat := afpMatAdd
+        example : AFPMat → AFPMat := afpDagger
+        example : AFPMat → Prop := afpUnitary
+        example : AFPMat → Prop := afpHermitian
+        example : AFPMat → Prop := afpIsSquare
+        -- Phase tag is inhabited.
+        example : AFPTranslationPhase := AFPTranslationPhase.Phase1
+        example : AFPTranslationPhase := AFPTranslationPhase.Phase2
+        INNER_EOF
+        lake env lean /tmp/smoke.lean
+        echo "Smoke test passed"

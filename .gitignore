@@ -6,3 +6,4 @@ build/
 *.trace
 *.hash
 .recovery/
+lake-manifest.json
